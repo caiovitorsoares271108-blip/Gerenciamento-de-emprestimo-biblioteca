@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Biblioteca IFES — Campus Aracruz</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="logo-icon"><i class="ti ti-books"></i></div>
+      <h1>Biblioteca IFES</h1><p>Acesso Restrito — Campus Aracruz</p>
+    </div>
+    <div class="form-field"><label>Usuário</label><input type="text" id="login-user" placeholder="Digite seu usuário" autocomplete="username"></div>
+    <div class="form-field"><label>Senha</label><input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button id="login-btn" type="button" class="btn-login" onclick="doLogin()"><i class="ti ti-login" style="vertical-align:-2px;margin-right:6px;"></i>Entrar</button>
+    <p class="login-err" id="login-err"></p>
+    <p class="login-hint">Padrão: <strong>admin</strong> / <strong>ifes2024</strong></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sb-logo"><span class="name">📚 Biblioteca</span><span class="sub">IFES Campus Aracruz</span></div>
+      <div class="sb-nav">
+        <div class="sb-section">Principal</div>
+        <button class="nav-btn active" data-page="dashboard"><i class="ti ti-layout-dashboard"></i>Painel</button>
+        <button class="nav-btn" data-page="emprestimo"><i class="ti ti-transfer"></i>Empréstimos</button>
+        <div class="sb-section">Cadastros</div>
+        <button class="nav-btn" data-page="livros"><i class="ti ti-book"></i>Acervo</button>
+        <button class="nav-btn" data-page="generos"><i class="ti ti-tag"></i>Gêneros</button>
+        <button class="nav-btn" data-page="alunos"><i class="ti ti-users"></i>Alunos</button>
+        <button class="nav-btn" data-page="salas"><i class="ti ti-door"></i>Salas</button>
+        <div class="sb-section">Outros</div>
+        <button class="nav-btn" data-page="relatorios"><i class="ti ti-chart-bar"></i>Relatórios</button>
+        <button class="nav-btn" data-page="config"><i class="ti ti-settings"></i>Configurações</button>
+      </div>
+      <div class="sb-footer">
+        <div class="sb-avatar" id="sb-avatar-initials">AD</div>
+        <span class="sb-user-name" id="sb-user-name">Administrador</span>
+        <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout"></i></button>
+      </div>
+    </nav>
+
+    <div class="main-area">
+      <div class="topbar">
+        <div><div class="topbar-title" id="topbar-title">Painel</div><div class="topbar-sub" id="topbar-sub">Visão geral</div></div>
+        <div class="topbar-actions" id="topbar-actions"></div>
+      </div>
+      <div class="content">
+
+        <!-- DASHBOARD -->
+        <div class="page active" id="page-dashboard">
+          <div class="metrics" id="metrics-row"></div>
+          <div class="card">
+            <div class="card-header"><h2><i class="ti ti-clock-exclamation" style="vertical-align:-2px;margin-right:5px;color:var(--amber);"></i>Devoluções pendentes</h2>
+              <button class="btn btn-sm" onclick="syncData()"><i class="ti ti-refresh"></i>Atualizar</button></div>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>Aluno</th><th>Turma</th><th>Sala</th><th>Livro</th><th>Gênero</th><th>Exemplar</th><th>Devolução</th><th>Status</th><th></th></tr></thead>
+              <tbody id="dash-loans-tbody"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- EMPRÉSTIMOS -->
+        <div class="page" id="page-emprestimo">
+          <div class="tabs" id="emp-tabs">
+            <button class="tab-btn active" data-tab="novo">Novo empréstimo</button>
+            <button class="tab-btn" data-tab="lista">Todos os empréstimos</button>
+          </div>
+          <div id="tab-novo" style="padding-top:1rem;">
+            <div class="card"><div class="card-header"><h2><i class="ti ti-book" style="vertical-align:-2px;margin-right:6px;color:var(--brand);"></i>1. Localizar livro</h2></div>
+              <div class="card-body">
+                <div class="barcode-row">
+                  <div class="form-group"><label>Código de barras / ISBN ou ID</label>
+                    <input type="text" id="isbn-input" placeholder="Câmera QR ou digite..." onkeydown="if(event.key==='Enter')lookupBook()"></div>
+                  <button class="scan-btn" onclick="QRScanner.start('isbn-input',r=>{if(r.type==='book'&&r.data){Utils.el('isbn-input').value=r.data.id;lookupBook();}else{Utils.el('isbn-input').value=r.primary;lookupBook();}})">
+                    <i class="ti ti-camera"></i>Câmera</button>
+                  <button class="scan-btn" onclick="lookupBook()"><i class="ti ti-search"></i>Buscar</button>
+                </div>
+                <div id="book-result"></div>
+              </div>
+            </div>
+            <div class="card"><div class="card-header"><h2><i class="ti ti-user" style="vertical-align:-2px;margin-right:6px;color:var(--green);"></i>2. Identificar aluno</h2></div>
+              <div class="card-body">
+                <div class="barcode-row">
+                  <div class="form-group"><label>Carteirinha, nome ou ID</label>
+                    <input type="text" id="student-input" placeholder="Câmera QR ou digite..." onkeydown="if(event.key==='Enter')lookupStudent()"></div>
+                  <button class="scan-btn" onclick="QRScanner.start('student-input',r=>{if(r.type==='student'&&r.data){Utils.el('student-input').value=r.data.id;lookupStudent();}else{Utils.el('student-input').value=r.primary;lookupStudent();}})">
+                    <i class="ti ti-camera"></i>Câmera</button>
+                  <button class="scan-btn" onclick="lookupStudent()"><i class="ti ti-search"></i>Buscar</button>
+                </div>
+                <div id="student-result"></div>
+              </div>
+            </div>
+            <div class="card"><div class="card-header"><h2><i class="ti ti-check" style="vertical-align:-2px;margin-right:6px;color:var(--amber);"></i>3. Confirmar empréstimo</h2></div>
+              <div class="card-body">
+                <div class="form-row cols-2">
+                  <div class="form-group"><label>Data do empréstimo</label><input type="date" id="loan-date"></div>
+                  <div class="form-group"><label>Prazo de devolução</label>
+                    <select id="loan-days" onchange="updateDueDate()">
+                      <option value="7">7 dias (padrão)</option><option value="14">14 dias</option>
+                      <option value="3">3 dias</option><option value="30">30 dias</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="alert alert-amber"><i class="ti ti-calendar-due"></i><span id="due-date-text">Selecione o livro e o aluno.</span></div>
+                <button class="btn btn-primary" onclick="confirmLoan()"><i class="ti ti-check"></i>Confirmar empréstimo</button>
+              </div>
+            </div>
+          </div>
+          <div id="tab-lista" style="display:none;">
+            <div class="toolbar">
+              <div class="search-wrap"><i class="ti ti-search"></i><input type="text" id="loans-search" placeholder="Buscar..." oninput="renderLoans()"></div>
+              <select id="loans-filter" onchange="renderLoans()"><option value="">Todos</option><option value="active">Ativos</option><option value="overdue">Atrasados</option><option value="returned">Devolvidos</option></select>
+            </div>
+            <div class="tbl-wrap"><table>
+              <thead><tr><th>#</th><th>Aluno</th><th>Turma</th><th>Livro</th><th>Exemplar</th><th>Empréstimo</th><th>Devolução</th><th>Status</th><th></th></tr></thead>
+              <tbody id="loans-tbody"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- ACERVO -->
+        <div class="page" id="page-livros">
+          <div class="toolbar">
+            <div class="search-wrap"><i class="ti ti-search"></i><input type="text" id="books-search" placeholder="Título, autor, ISBN..." oninput="renderBooks()"></div>
+            <select id="books-genre-filter" onchange="renderBooks()"><option value="">Todos os gêneros</option></select>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>ISBN / ID</th><th>Título</th><th>Autor</th><th>Gênero</th><th>Área</th><th>Exemplares</th><th>Disponíveis</th><th></th></tr></thead>
+            <tbody id="books-tbody"></tbody>
+          </table></div>
+        </div>
+
+        <!-- GÊNEROS -->
+        <div class="page" id="page-generos">
+          <div style="padding:.75rem 0 .5rem;">
+            <p style="font-size:13px;color:var(--muted);">Categorize seus livros por tipo de literatura para facilitar a busca.</p>
+          </div>
+          <div class="genres-grid" id="genres-grid"></div>
+        </div>
+
+        <!-- ALUNOS -->
+        <div class="page" id="page-alunos">
+          <div style="padding:1rem 0;">
+            <div class="import-zone" id="import-zone" onclick="document.getElementById('csv-file-input').click()">
+              <i class="ti ti-file-type-csv"></i><p>Importar alunos via CSV</p>
+              <small>Colunas: <strong>nome, turma, carteirinha, sala_id</strong> — Clique ou arraste</small>
+            </div>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="importCSV(event)">
+          </div>
+          <div class="toolbar">
+            <div class="search-wrap"><i class="ti ti-search"></i><input type="text" id="students-search" placeholder="Nome, turma ou carteirinha..." oninput="renderStudents()"></div>
+            <select id="students-class-filter" onchange="renderStudents()"><option value="">Todas as turmas</option></select>
+            <select id="students-room-filter"  onchange="renderStudents()"><option value="">Todas as salas</option></select>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Carteirinha / ID</th><th>Nome</th><th>Turma</th><th>Sala</th><th>Ativos</th><th>Situação</th><th></th></tr></thead>
+            <tbody id="students-tbody"></tbody>
+          </table></div>
+        </div>
+
+        <!-- SALAS -->
+        <div class="page" id="page-salas">
+          <div class="toolbar">
+            <div class="search-wrap"><i class="ti ti-search"></i><input type="text" id="rooms-search" placeholder="Buscar sala..." oninput="renderRooms()"></div>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Código</th><th>Nome</th><th>Descrição</th><th>Capacidade</th><th>Ocupação</th><th></th></tr></thead>
+            <tbody id="rooms-tbody"></tbody>
+          </table></div>
+        </div>
+
+        <!-- RELATÓRIOS -->
+        <div class="page" id="page-relatorios">
+          <div class="charts-grid" style="margin-top:.5rem;">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h3><i class="ti ti-chart-bar" style="vertical-align:-2px;margin-right:5px;color:var(--brand);"></i>Resumo geral</h3>
+                <select class="chart-type-select" id="chart-type-summary" onchange="Charts.changeSummaryType(this.value)">
+                  <option value="bar">Colunas</option><option value="bar-h">Barras horiz.</option>
+                  <option value="pie">Pizza</option><option value="doughnut">Rosca</option>
+                  <option value="line">Linha</option><option value="polarArea">Polar</option>
+                </select>
+              </div>
+              <div class="chart-body"><canvas id="chart-summary"></canvas></div>
+              <div class="chart-stats">
+                <div class="chart-stat"><div class="chart-stat-dot" style="background:#f59e0b;"></div><span>Emprestados</span><span class="chart-stat-val" id="stat-emprestados">—</span></div>
+                <div class="chart-stat"><div class="chart-stat-dot" style="background:#ef4444;"></div><span>Atrasados</span><span class="chart-stat-val" id="stat-atrasados">—</span></div>
+                <div class="chart-stat"><div class="chart-stat-dot" style="background:#22c55e;"></div><span>Devolvidos</span><span class="chart-stat-val" id="stat-devolvidos">—</span></div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h3><i class="ti ti-book" style="vertical-align:-2px;margin-right:5px;color:var(--brand);"></i>Livros mais emprestados</h3>
+                <select class="chart-type-select" id="chart-type-topbooks" onchange="Charts.changeTopBooksType(this.value)">
+                  <option value="bar">Colunas</option><option value="bar-h">Barras horiz.</option>
+                  <option value="pie">Pizza</option><option value="doughnut">Rosca</option><option value="polarArea">Polar</option>
+                </select>
+              </div>
+              <div class="chart-body"><canvas id="chart-topbooks"></canvas></div>
+            </div>
+            <div class="chart-card full-width">
+              <div class="chart-card-header">
+                <h3><i class="ti ti-users" style="vertical-align:-2px;margin-right:5px;color:var(--brand);"></i>Empréstimos por turma</h3>
+                <select class="chart-type-select" id="chart-type-byclass" onchange="Charts.changeClassType(this.value)">
+                  <option value="bar">Colunas</option><option value="bar-h">Barras horiz.</option>
+                  <option value="line">Linha</option><option value="pie">Pizza</option><option value="doughnut">Rosca</option>
+                </select>
+              </div>
+              <div class="chart-body" style="height:300px;"><canvas id="chart-byclass"></canvas></div>
+            </div>
+          </div>
+          <div style="margin-top:.25rem;"><div class="report-grid">
+            <div class="report-card"><div class="report-icon red"><i class="ti ti-clock-exclamation"></i></div><div><div class="report-title">Empréstimos atrasados</div><div class="report-desc">Alunos com devolução vencida</div><a class="btn btn-sm" href="http://localhost:5000/api/reports/export/overdue" target="_blank"><i class="ti ti-download"></i>CSV</a></div></div>
+            <div class="report-card"><div class="report-icon blue"><i class="ti ti-transfer"></i></div><div><div class="report-title">Histórico completo</div><div class="report-desc">Todos os empréstimos</div><a class="btn btn-sm" href="http://localhost:5000/api/reports/export/all" target="_blank"><i class="ti ti-download"></i>CSV</a></div></div>
+            <div class="report-card"><div class="report-icon green"><i class="ti ti-book"></i></div><div><div class="report-title">Livros mais emprestados</div><div class="report-desc">Ranking por demanda</div><a class="btn btn-sm" href="http://localhost:5000/api/reports/export/books" target="_blank"><i class="ti ti-download"></i>CSV</a></div></div>
+            <div class="report-card"><div class="report-icon amber"><i class="ti ti-users"></i></div><div><div class="report-title">Por turma</div><div class="report-desc">Agrupado por turma</div><a class="btn btn-sm" href="http://localhost:5000/api/reports/export/by-class" target="_blank"><i class="ti ti-download"></i>CSV</a></div></div>
+          </div></div>
+        </div>
+
+        <!-- CONFIG -->
+        <div class="page" id="page-config">
+          <div class="card" style="max-width:520px;">
+            <div class="card-header"><h2>Status da Conexão</h2></div>
+            <div class="card-body">
+              <p id="cloud-status" style="font-size:13px;margin-bottom:1rem;"><i class="ti ti-loader" style="animation:spin 1s linear infinite;display:inline-block;"></i> Verificando...</p>
+              <div style="margin-bottom:1rem;padding:.75rem 1rem;background:var(--brand-light);border-radius:var(--r);font-size:12px;">
+                <strong>Supabase:</strong> jwncagbmqipbzoeldlet.supabase.co<br><strong>Backend:</strong> http://localhost:5000
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn" onclick="syncAll()"><i class="ti ti-refresh"></i>Sincronizar</button>
+                <button class="btn" onclick="API.health().then(d=>Utils.toast('Backend OK: '+d.database,'success')).catch(e=>Utils.toast('Offline: '+e.message,'error'))"><i class="ti ti-heart-rate-monitor"></i>Testar</button>
+                <button class="btn" onclick="API.reports.generateMonthly().then(()=>Utils.toast('Relatório mensal gerado!','success')).catch(e=>Utils.toast(e.message,'error'))"><i class="ti ti-report-analytics"></i>Gerar rel. mensal</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
+
+<!-- Livro -->
+<div class="overlay" id="modal-book"><div class="modal">
+  <div class="modal-head"><h2 id="modal-book-title">Cadastrar livro</h2><button class="modal-close" onclick="Utils.closeModal('modal-book')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="book-edit-id">
+    <div class="form-group"><label>ISBN / Código</label><input type="text" id="book-isbn" placeholder="Vazio = gera ID automático"></div>
+    <div class="form-group"><label>Título *</label><input type="text" id="book-title" placeholder="Título completo"></div>
+    <div class="form-group"><label>Autor *</label><input type="text" id="book-author" placeholder="Nome do autor"></div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Gênero</label><select id="book-genre"><option value="">— Sem gênero —</option></select></div>
+      <div class="form-group"><label>Área / Curso</label><select id="book-area"><option>Informática</option><option>Administração</option><option>Elétrica</option><option>Edificações</option><option>Geral</option></select></div>
+    </div>
+    <div class="form-group"><label>Nº de exemplares</label><input type="number" id="book-copies" value="1" min="1" max="99"></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-book')">Cancelar</button><button class="btn btn-primary" onclick="saveBook()"><i class="ti ti-check"></i>Salvar</button></div>
+</div></div>
+
+<!-- Exemplares -->
+<div class="overlay" id="modal-exemplares"><div class="modal modal-lg">
+  <div class="modal-head"><h2 id="modal-ex-title">Exemplares</h2><button class="modal-close" onclick="Utils.closeModal('modal-exemplares')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body"><div id="exemplares-list"></div></div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-exemplares')">Fechar</button></div>
+</div></div>
+
+<!-- QR Result -->
+<div class="overlay" id="modal-qr-result"><div class="modal">
+  <div class="modal-head"><h2><i class="ti ti-qrcode" style="vertical-align:-2px;margin-right:5px;"></i>QR Code</h2><button class="modal-close" onclick="Utils.closeModal('modal-qr-result')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body" style="text-align:center;">
+    <img id="qr-result-img" src="" alt="QR Code" style="max-width:200px;margin:0 auto 1rem;display:block;border:4px solid var(--brand-light);border-radius:8px;">
+    <div id="qr-result-label" style="font-weight:600;font-size:14px;margin-bottom:4px;"></div>
+    <div id="qr-result-id" style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:1rem;"></div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button class="btn btn-primary" id="qr-download-btn"><i class="ti ti-download"></i>Baixar PNG</button>
+      <button class="btn" id="qr-print-card-btn"><i class="ti ti-printer"></i>Imprimir cartão</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- Aluno -->
+<div class="overlay" id="modal-student"><div class="modal">
+  <div class="modal-head"><h2 id="modal-student-title">Cadastrar aluno</h2><button class="modal-close" onclick="Utils.closeModal('modal-student')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="student-edit-id">
+    <div class="form-group"><label>Nome completo *</label><input type="text" id="student-name" placeholder="Nome do aluno"></div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Turma *</label><input type="text" id="student-class" placeholder="Ex: INF3A"></div>
+      <div class="form-group"><label>Carteirinha</label><input type="text" id="student-card" placeholder="Vazio = automático"></div>
+    </div>
+    <div class="form-group"><label>Sala</label><select id="student-room"><option value="">— Sem sala —</option></select></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-student')">Cancelar</button><button class="btn btn-primary" onclick="saveStudent()"><i class="ti ti-check"></i>Salvar</button></div>
+</div></div>
+
+<!-- Devolução -->
+<div class="overlay" id="modal-devolution"><div class="modal">
+  <div class="modal-head"><h2>Registrar devolução</h2><button class="modal-close" onclick="Utils.closeModal('modal-devolution')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <div class="dev-info" id="dev-info"></div>
+    <div class="form-group"><label>Observação (opcional)</label><input type="text" id="dev-obs" placeholder="Ex: livro em bom estado..."></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-devolution')">Cancelar</button><button class="btn btn-success" onclick="confirmDevolution()"><i class="ti ti-check"></i>Confirmar devolução</button></div>
+</div></div>
+
+<!-- Histórico aluno -->
+<div class="overlay" id="modal-student-history"><div class="modal modal-lg">
+  <div class="modal-head"><h2 id="modal-history-title">Histórico do aluno</h2><button class="modal-close" onclick="Utils.closeModal('modal-student-history')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body"><div id="student-history-content"></div></div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-student-history')">Fechar</button></div>
+</div></div>
+
+<!-- Sala -->
+<div class="overlay" id="modal-room"><div class="modal">
+  <div class="modal-head"><h2 id="modal-room-title">Criar sala</h2><button class="modal-close" onclick="Utils.closeModal('modal-room')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="room-edit-id">
+    <div class="form-group"><label>Nome da sala *</label><input type="text" id="room-name" placeholder="Ex: Sala 2A, Lab. Informática"></div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Código</label><input type="text" id="room-code" placeholder="Ex: S2A, LAB-INFO"></div>
+      <div class="form-group"><label>Capacidade</label><input type="number" id="room-cap" value="40" min="1"></div>
+    </div>
+    <div class="form-group"><label>Descrição</label><input type="text" id="room-desc" placeholder="Descrição opcional"></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-room')">Cancelar</button><button class="btn btn-primary" onclick="saveRoom()"><i class="ti ti-check"></i>Salvar</button></div>
+</div></div>
+
+<!-- Alunos da sala -->
+<div class="overlay" id="modal-room-students"><div class="modal modal-lg">
+  <div class="modal-head"><h2 id="modal-room-students-title">Alunos da sala</h2><button class="modal-close" onclick="Utils.closeModal('modal-room-students')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body"><div id="room-students-content"></div></div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-room-students')">Fechar</button></div>
+</div></div>
+
+<!-- Gênero -->
+<div class="overlay" id="modal-genre"><div class="modal">
+  <div class="modal-head"><h2 id="modal-genre-title">Novo gênero</h2><button class="modal-close" onclick="Utils.closeModal('modal-genre')"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="genre-edit-id">
+    <div class="form-group"><label>Nome do gênero *</label><input type="text" id="genre-name" placeholder="Ex: Comédia, Ficção, Técnico..."></div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Ícone (Tabler)</label><input type="text" id="genre-icon" placeholder="ti-book" value="ti-book"></div>
+      <div class="form-group"><label>Cor</label><input type="color" id="genre-color" value="#6366f1" style="height:36px;padding:2px 6px;cursor:pointer;"></div>
+    </div>
+    <div id="genre-preview" style="margin-top:.5rem;"></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="Utils.closeModal('modal-genre')">Cancelar</button><button class="btn btn-primary" onclick="saveGenre()"><i class="ti ti-check"></i>Salvar</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<!-- Scripts (ordem importa) -->
+<script src="assets/js/lib/supabase-config.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/qr-scanner.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/pages/books.js"></script>
+<script src="assets/js/pages/students.js"></script>
+<script src="assets/js/pages/loans.js"></script>
+<script src="assets/js/pages/rooms.js"></script>
+<script src="assets/js/pages/genres.js"></script>
+<script src="assets/js/app.js"></script>
+</body></html>

@@ -1,0 +1,9 @@
+flask==3.0.3
+flask-cors==4.0.1
+python-dotenv==1.0.1
+qrcode[pil]==7.4.2
+Pillow==10.4.0
+opencv-python-headless==4.10.0.84
+pyzbar==0.1.9
+numpy==1.26.4
+supabase==3.0.0
