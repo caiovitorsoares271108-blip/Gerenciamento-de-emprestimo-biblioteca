@@ -1,0 +1,29 @@
+[
+  {
+    "id": "e735d6a9-aae3-491f-84fa-d8ab256b1580",
+    "isbn": "",
+    "titulo": "Teste",
+    "autor": "Autor",
+    "area": "Geral",
+    "genero_id": null,
+    "exemplares": 2
+  },
+  {
+    "id": "98b93015-53f5-4a6f-94cf-8942159f6f11",
+    "isbn": "",
+    "titulo": "Auto Test Book",
+    "autor": "Tester",
+    "area": "Geral",
+    "genero_id": null,
+    "exemplares": 2
+  },
+  {
+    "id": "a8446b69-1c02-49c0-bc11-e364b8cdd5c7",
+    "isbn": "",
+    "titulo": "Test Book CI",
+    "autor": "CI",
+    "area": "Geral",
+    "genero_id": null,
+    "exemplares": 1
+  }
+]

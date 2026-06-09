@@ -1,0 +1,16 @@
+[
+  {
+    "id": "40fe52e4-7083-4185-8f3e-91c397a917b8",
+    "nome": "Auto Test Student",
+    "turma": "TST1",
+    "carteirinha": "",
+    "sala_id": null
+  },
+  {
+    "id": "14d21792-8581-4028-839c-65dba872e8b6",
+    "nome": "Test Student CI",
+    "turma": "CI1",
+    "carteirinha": "",
+    "sala_id": null
+  }
+]
